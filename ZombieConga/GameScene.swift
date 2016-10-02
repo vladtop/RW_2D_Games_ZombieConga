@@ -20,6 +20,10 @@ class GameScene: SKScene {
     
     let playableRect: CGRect
     
+    var lastTouchLocation: CGPoint?
+    
+    let zombieRotateRadiansPerSec:CGFloat = 4.0 * π
+    
     override init(size: CGSize) {
         let maxAspectRatio:CGFloat = 16.0 / 9.0
         let playableHeight = size.width / maxAspectRatio
@@ -65,6 +69,8 @@ class GameScene: SKScene {
     }
     
     func sceneTouched(touchLocation:CGPoint) {
+        lastTouchLocation = touchLocation
+        
         moveZombieToward(location: touchLocation)
     }
     
@@ -93,8 +99,11 @@ class GameScene: SKScene {
         }
     }
     
-    func rotateSprite(sprite: SKSpriteNode, direction: CGPoint) {
-        sprite.zRotation = direction.angle
+    func rotateSprite(sprite: SKSpriteNode, direction: CGPoint, rotateRadiansPerSec: CGFloat) {
+        let shortest = shortestAngleBetween(angle1: sprite.zRotation, angle2: velocity.angle)
+        let amountToRotate = min(rotateRadiansPerSec * CGFloat(dt), abs(shortest))
+        
+        sprite.zRotation += shortest.sign() * amountToRotate
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -126,10 +135,20 @@ class GameScene: SKScene {
         lastUpdateTime = currentTime
         print("\(dt) seconds since last update")
         
-        moveSprite(sprite: zombie, velocity: velocity)
+        if let lastTouchLocaiton = lastTouchLocation {
+            let lastTouchLocationOffset = lastTouchLocaiton - zombie.position
+            
+            let zombieWillMove = zombieMovePointsPerSec * CGFloat(dt)
+            
+            if lastTouchLocationOffset.length() <= zombieWillMove {
+                zombie.position = lastTouchLocaiton
+                velocity = CGPoint.zero
+            } else {
+                moveSprite(sprite: zombie, velocity: velocity)
+                rotateSprite(sprite: zombie, direction: velocity, rotateRadiansPerSec: zombieRotateRadiansPerSec)
+            }
+        }
         
         boundsCheckZombie()
-        
-        rotateSprite(sprite: zombie, direction: velocity)
     }
 }
